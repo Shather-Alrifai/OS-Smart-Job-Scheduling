@@ -171,8 +171,9 @@ public class SmarterScheduling {
         int sumBT = 0;
         if (HoldQ1.isEmpty()) {
             AvgBT = BTi;
+            HoldQ1.add(J);
         } else {
-
+             // we can make it a method
             //Compute AvgBT in Q1
             for (Job job : HoldQ1) {
                 sumBT += job.JobBT;
@@ -181,17 +182,13 @@ public class SmarterScheduling {
         }
 
         if (BTi > AvgBT) {//put the process in Hold Queue 2
-
             HoldQ2.add(J);
 //X=X- Processi. RequestedMemory
 
             AvailMemo -= J.JobMemS;
 //Y=Y- Processi. RequestedDevices
             AvailDevs -= J.JobDevice;
-
-//ProcessiPr= process priority from input file???
-int ProcessiPr=J.JobPriority;
-
+            
         } else { //put the process in Hold Queue 1
 
             HoldQ1.add(J);
