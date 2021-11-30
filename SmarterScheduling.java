@@ -52,6 +52,9 @@ public class SmarterScheduling {
     //System start time of the system
     static int StartTime = 0;
 
+    //System current time
+    static int CurrentTime = 0;
+
     //All devices in system
     static int TotalDevs = 0;
 
@@ -74,7 +77,7 @@ public class SmarterScheduling {
     //AR weighted average of the burst times
     static int AR;
     //job executing in CPU
-    static Job ExcJob = new Job();
+    static Job ExcJob = null;
 
 //Main method 
     public static void main(String[] args) throws FileNotFoundException {
@@ -133,7 +136,7 @@ public class SmarterScheduling {
                 else if (next.equals("D")) {
                     int Dtime = input.nextInt();
                     if (Dtime < 999999) {
-                        job = new Job(Dtime, 999999, 999999, 999999, 999999, 999999);
+                        job = new Job(Dtime, 0, 999999, 999999, 999999, 999999);
                         AllJobs.add(job);
                     } else {
                         time = Dtime;
@@ -162,6 +165,129 @@ public class SmarterScheduling {
         output.close();
     }//end main
 
+    public static void externalEvent() {
+        
+        
+            // work on all_jobs queue
+        if (!AllJobs.isEmpty()) {
+           Job job = AllJobs.poll();
+            // in case of "D" job
+            if (job.getJobID() == 0) {
+                //invoke displayEvent
+                
+            } else {  // in case of "A" job
+                // if there were available main memory and devices 
+                // the job is sent to hold queue 1 (ready queue)
+                if (job.getJobMemS() <= AvailMemo
+                        && job.getJobDevice() <= AvailDevs) {
+                    AvailMemo -= job.getJobMemS();
+                    AvailDevs -= job.getJobDevice();
+                    
+                   //add to Q1  Hold1_DRR(job);
+                   
+                    // update SR& AR
+                    SR_AR_update();
+                } else {
+                    // if there were not available main memory and devices
+                    // the job is sent to hold queue 2 (waiting queue)
+                    //invoke add to Hold Q2
+                    // save the entred time
+                    job.setEnterQ2time(CurrentTime);
+                }
+            }
+        }
+         
+        
+        
+        
+    }
+
+    public static void internalEvent() {
+        Jobterminate();
+        if (!HoldQ1.isEmpty()) {
+            Job job = HoldQ1.poll();
+             SR_ARupdate(ExcJob);
+             putInCPU(job);
+        }
+        
+        
+    }
+
+    public static void Jobterminate() {
+        
+             if (ExcJob != null) {
+            if (ExcJob.getRemBT() == 0) {
+                //the job releases any main memory
+                CompletedQ.add(ExcJob);
+                AvailDevs+= ExcJob.getJobDevice();
+                AvailMemo+= ExcJob.getJobMemS();
+                 ExcJob = null;
+                
+                //invoke task1 task2
+               
+            } else {
+                HoldQ1.add(ExcJob);
+                SR_ARupdate(ExcJob);
+                if (HoldQ1.size() == 1) {
+                    TQuantum = HoldQ1.peek().getRemBT();
+                    putInCPU(HoldQ1.poll());
+                    SR_ARupdate(ExcJob);
+                }
+            }
+        }
+        
+         
+    }
+
+    public static void putInCPU(Job CPUjob) {
+        ExcJob= CPUjob;
+       ExcJob.setJobST(CurrentTime);
+         DynamicTQuantum();
+         
+        if (ExcJob.getRemBT() > TQuantum) {
+            ExcJob.setJobFT(CurrentTime + TQuantum);
+            ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum);
+        } else {
+           // int finish = Math.min(exe_job.getNeedTime(), quantum);
+             
+            ExcJob.setJobFT(CurrentTime + ExcJob.getRemBT());
+            ExcJob.setRemBT(0);
+            ExcJob.setJobTAT(ExcJob.getJobFT() - ExcJob.getJobArrvTime());
+        }
+        
+    }
+
+    public static void SR_AR_update() {
+        if (HoldQ1.isEmpty()) {
+            AR = 0;
+        }
+        SR = 0;
+        for (Job j : HoldQ1) {
+            SR += (j.getJobWeight() * j.getRemBT());
+        }
+
+        AR = (SR / HoldQ1.size());
+        //   TQuantum = AR;
+       // DynamicTQuantum();
+
+    }
+    
+    
+public static void DynamicTQuantum(){
+TQuantum=Math.min(AR,ExcJob.getRemBT());
+}
+
+    ////////////////////// Implementation of the Hold Queue 1 based on Dynamic Round Robin //////////////////////
+    public static void inHoldQ1_DRR(Job job) {
+    }
+
+    public static void HoldQ2_DP() {//Task2
+
+    }
+
+    public static void SortHoldQ2() {
+    }
+
     public static void Task0(Job J) {
 //BTi is the process burst time
 //AvgBT is the average burst time of all processes in Hold Queue 1
@@ -173,7 +299,7 @@ public class SmarterScheduling {
             AvgBT = BTi;
             HoldQ1.add(J);
         } else {
-             // we can make it a method
+            // we can make it a method
             //Compute AvgBT in Q1
             for (Job job : HoldQ1) {
                 sumBT += job.JobBT;
@@ -188,7 +314,7 @@ public class SmarterScheduling {
             AvailMemo -= J.JobMemS;
 //Y=Y- Processi. RequestedDevices
             AvailDevs -= J.JobDevice;
-            
+
         } else { //put the process in Hold Queue 1
 
             HoldQ1.add(J);
@@ -199,6 +325,15 @@ public class SmarterScheduling {
             AvailDevs -= J.JobDevice;
         }
 
+    }
+
+    public static void Task1() {
+    }
+
+    public static void finalDisplay(Queue<Job> allJobs) {
+    }
+
+    public static void displayEvent(Job job) {
     }
 
 }

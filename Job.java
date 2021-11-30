@@ -19,7 +19,10 @@ public class Job {
     int JobFT; // job finish time
     int JobTAT; // job Turn around time
     int JobAccuredT;// job accumulated time 
-
+    int RemBT;//remaining BT 
+    int WaitT; //waiting time
+    int EnterQ2time; // when it entered Q2 time. 
+     private int JobWeight;// job weight depends on its priority
     
     public Job (){}
     
@@ -34,6 +37,8 @@ public class Job {
         this.JobST=0;
         this.JobTAT = 0;
         this.JobAccuredT = 0;
+        // set process weight according to its priority
+        this.JobWeight = this.JobPriority == 1 ? 2 : 1;
     }
 
     //-------------------------------------------------
@@ -123,6 +128,47 @@ public class Job {
     public void setJobAccuredT(int JobAccuredT) {
         this.JobAccuredT+= JobAccuredT;
     }
+ //-------------------------------------------------
+    public int getEnterQ2time() {
+        return EnterQ2time;
+    }
+
+    public void setEnterQ2time(int EnterQ2time) {
+        this.EnterQ2time = EnterQ2time;
+    }
+  //-------------------------------------------------
+
+    public int getRemBT() {
+        return RemBT;
+    }
+
+    public void setRemBT(int RemBT) {
+        this.RemBT = RemBT;
+    }
+    
+     //-------------------------------------------------
+
+    public int getWaitT() {
+        return WaitT;
+    }
+
+    public void setWaitT(int WaitT) {
+        this.WaitT = WaitT;
+    }
+     //-------------------------------------------------
+
+    public int getJobWeight() {
+        return JobWeight;
+    }
+
+    public void setJobWeight(int JobWeight) {
+        this.JobWeight = JobWeight;
+    }
+    
+    
+    
+    
+    
     
     
     //----------------------printing the Job info----------------------------------
