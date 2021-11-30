@@ -24,7 +24,8 @@ public class Job {
     int EnterQ2time; // when it entered Q2 time. 
      private int JobWeight;// job weight depends on its priority
      private boolean isTermenated= false;
-    
+     private boolean isNew= true;
+     
     public Job (){}
     
     public Job(int JobArrvTime, int JobID, int JobMemS, int JobDevice, int JobBT, int JobPriority) {
@@ -165,11 +166,27 @@ public class Job {
     public void setJobWeight(int JobWeight) {
         this.JobWeight = JobWeight;
     }
+    //-------------------------------------------------
+
+    public boolean isIsTermenated() {
+        return isTermenated;
+    }
+
+    public void setIsTermenated(boolean isTermenated) {
+        this.isTermenated = isTermenated;
+    }
     
     
     
-    
-    
+    //-------------------------------------------------
+
+    public boolean isIsNew() {
+        return isNew;
+    }
+
+    public void setIsNew(boolean isNew) {
+        this.isNew = isNew;
+    }
     
     
     //----------------------printing the Job info----------------------------------
