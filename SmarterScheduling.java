@@ -166,15 +166,14 @@ public class SmarterScheduling {
     }//end main
 
     public static void externalEvent() {
-        
-        
-            // work on all_jobs queue
+
+        // work on all_jobs queue
         if (!AllJobs.isEmpty()) {
-           Job job = AllJobs.poll();
+            Job job = AllJobs.poll();
             // in case of "D" job
             if (job.getJobID() == 0) {
                 //invoke displayEvent
-                
+
             } else {  // in case of "A" job
                 // if there were available main memory and devices 
                 // the job is sent to hold queue 1 (ready queue)
@@ -182,9 +181,8 @@ public class SmarterScheduling {
                         && job.getJobDevice() <= AvailDevs) {
                     AvailMemo -= job.getJobMemS();
                     AvailDevs -= job.getJobDevice();
-                    
-                   //add to Q1  Hold1_DRR(job);
-                   
+
+                    //add to Q1  Hold1_DRR(job);
                     // update SR& AR
                     SR_AR_update();
                 } else {
@@ -196,65 +194,59 @@ public class SmarterScheduling {
                 }
             }
         }
-         
-        
-        
-        
+
     }
 
     public static void internalEvent() {
         Jobterminate();
         if (!HoldQ1.isEmpty()) {
             Job job = HoldQ1.poll();
-             SR_ARupdate(ExcJob);
-             putInCPU(job);
+            SR_AR_update();
+            putInCPU(job);
         }
-        
-        
+
     }
 
     public static void Jobterminate() {
-        
-             if (ExcJob != null) {
+
+        if (ExcJob != null) {
             if (ExcJob.getRemBT() == 0) {
                 //the job releases any main memory
                 CompletedQ.add(ExcJob);
-                AvailDevs+= ExcJob.getJobDevice();
-                AvailMemo+= ExcJob.getJobMemS();
-                 ExcJob = null;
-                
+                AvailDevs += ExcJob.getJobDevice();
+                AvailMemo += ExcJob.getJobMemS();
+                ExcJob = null;
+
                 //invoke task1 task2
-               
             } else {
                 HoldQ1.add(ExcJob);
-                SR_ARupdate(ExcJob);
+                SR_AR_update();
                 if (HoldQ1.size() == 1) {
                     TQuantum = HoldQ1.peek().getRemBT();
                     putInCPU(HoldQ1.poll());
-                    SR_ARupdate(ExcJob);
+                    SR_AR_update();
                 }
             }
         }
-        
-         
+
     }
 
     public static void putInCPU(Job CPUjob) {
-        ExcJob= CPUjob;
-       ExcJob.setJobST(CurrentTime);
-         DynamicTQuantum();
-         
+        ExcJob = CPUjob;
+        ExcJob.setJobST(CurrentTime);
+        DynamicTQuantum();
+
         if (ExcJob.getRemBT() > TQuantum) {
             ExcJob.setJobFT(CurrentTime + TQuantum);
             ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum);
         } else {
-           // int finish = Math.min(exe_job.getNeedTime(), quantum);
-             
+            // int finish = Math.min(exe_job.getNeedTime(), quantum);
+
             ExcJob.setJobFT(CurrentTime + ExcJob.getRemBT());
             ExcJob.setRemBT(0);
             ExcJob.setJobTAT(ExcJob.getJobFT() - ExcJob.getJobArrvTime());
         }
-        
+
     }
 
     public static void SR_AR_update() {
@@ -268,17 +260,30 @@ public class SmarterScheduling {
 
         AR = (SR / HoldQ1.size());
         //   TQuantum = AR;
-       // DynamicTQuantum();
+        // DynamicTQuantum();
 
     }
-    
-    
-public static void DynamicTQuantum(){
-TQuantum=Math.min(AR,ExcJob.getRemBT());
-}
+
+    public static void DynamicTQuantum() {
+        TQuantum = Math.min(AR, ExcJob.getRemBT());
+    }
 
     ////////////////////// Implementation of the Hold Queue 1 based on Dynamic Round Robin //////////////////////
     public static void inHoldQ1_DRR(Job job) {
+        HoldQ1.add(job);
+        SR_AR_update();
+       
+//        ExcJob=HoldQ1.poll();
+//        putInCPU(ExcJob) ;
+//        
+        if (HoldQ1.isEmpty()){
+        TQuantum=job.JobBT;
+        }
+        if (!HoldQ1.isEmpty()){
+        TQuantum=(int)ComputeAvgBT(HoldQ1);
+          SR_AR_update();
+        }
+        //CPU executes P by TQ time
     }
 
     public static void HoldQ2_DP() {//Task2
@@ -288,46 +293,71 @@ TQuantum=Math.min(AR,ExcJob.getRemBT());
     public static void SortHoldQ2() {
     }
 
+    public static double ComputeAvgBT(Queue<Job> Queue) {
+        double AvgBT = 0;
+        double sumBT = 0;
+
+        //Compute AvgBT in Q1
+        for (Job job : Queue) {
+            sumBT += job.JobBT;
+        }
+        return AvgBT = sumBT / Queue.size();
+    }
+
     public static void Task0(Job J) {
 //BTi is the process burst time
 //AvgBT is the average burst time of all processes in Hold Queue 1
 //X and Y represent available Memory and Devices, respectively.
-        int BTi = J.JobBT;
-        int AvgBT = 0;
-        int sumBT = 0;
+        double BTi = J.JobBT;
+        double AvgBT = 0;
+
         if (HoldQ1.isEmpty()) {
             AvgBT = BTi;
-            HoldQ1.add(J);
+
         } else {
-            // we can make it a method
-            //Compute AvgBT in Q1
-            for (Job job : HoldQ1) {
-                sumBT += job.JobBT;
-            }
-            AvgBT = sumBT / HoldQ1.size();
+            AvgBT = ComputeAvgBT(HoldQ1);
         }
 
         if (BTi > AvgBT) {//put the process in Hold Queue 2
-            HoldQ2.add(J);
-//X=X- Processi. RequestedMemory
+            // HoldQ2.add(J); DP
 
             AvailMemo -= J.JobMemS;
-//Y=Y- Processi. RequestedDevices
+
             AvailDevs -= J.JobDevice;
 
         } else { //put the process in Hold Queue 1
 
-            HoldQ1.add(J);
-
-//X=X- Processi. RequestedMemory
+            //   HoldQ1.add(J); DRR
             AvailMemo -= J.JobMemS;
-//Y=Y- Processi. RequestedDevices
             AvailDevs -= J.JobDevice;
         }
 
     }
 
-    public static void Task1() {
+    public static void Task1(Job J) {
+        double DBTi = J.JobBT;
+        double AvgBT = 0;
+        if (ExcJob.getRemBT() == 0) {
+            AvgBT = ComputeAvgBT(HoldQ1);
+        }
+        for (Job job : HoldQ3) {
+            if (job.JobMemS <= AvailMemo && job.JobDevice <= AvailDevs) {
+                if (DBTi > AvgBT) {//put the process in Hold Queue 2
+                    // HoldQ2.add(J); DP
+
+                    AvailMemo -= J.JobMemS;
+
+                    AvailDevs -= J.JobDevice;
+
+                } else { //put the process in Hold Queue 1
+
+                    //   HoldQ1.add(J); DRR
+                    AvailMemo -= J.JobMemS;
+                    AvailDevs -= J.JobDevice;
+                }
+            }
+
+        }
     }
 
     public static void finalDisplay(Queue<Job> allJobs) {

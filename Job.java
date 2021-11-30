@@ -23,6 +23,7 @@ public class Job {
     int WaitT; //waiting time
     int EnterQ2time; // when it entered Q2 time. 
      private int JobWeight;// job weight depends on its priority
+     private boolean isTermenated= false;
     
     public Job (){}
     
