@@ -62,11 +62,12 @@ public class SmarterScheduling {
     static int Dtime = 0;
     static int DisplayTime = 0;
     static final int Infinity = 999999;
+    static PrintWriter output;
 //Main method 
 
     public static void main(String[] args) throws FileNotFoundException {
         //create file object
-        File inFile = new File("input3.txt");
+        File inFile = new File("input1.txt");
         if (!inFile.exists()) {
             System.out.println("not exists");
             System.exit(0);
@@ -74,7 +75,7 @@ public class SmarterScheduling {
         // read from input file , write in outputFile .  
         Scanner input = new Scanner(inFile);
         File outFile = new File("outputFile.txt");
-        PrintWriter output = new PrintWriter(outFile);
+        output = new PrintWriter(outFile);
         //------------------------------------------------------------
 
         String inputLn;
@@ -90,7 +91,7 @@ public class SmarterScheduling {
             //------------------------------------------------------------------
             // read system configuration   C 0 M=100 L=10 S=10 Q=2
 
-            if (command[0].equals("C")) {
+            if (command[0].equalsIgnoreCase("C")) {
                 StartTime = Integer.parseInt(command[1]);
                 //  System.out.println(command[1]);
                 CurrentTime = StartTime;
@@ -102,7 +103,7 @@ public class SmarterScheduling {
                 AvailDevs = TotalDevs;
 //--------------------------------------------------------------
                 // read "A" jobs
-            } else if (command[0].equals("A")) {
+            } else if (command[0].equalsIgnoreCase("A")) {
                 int ArrvTime = Integer.parseInt(command[1]);
                 int JobID = Integer.parseInt(command[2]);
                 int JobMemS = Integer.parseInt(command[3]);
@@ -115,10 +116,11 @@ public class SmarterScheduling {
                     job = new Job(ArrvTime, JobID, JobMemS, JobDevice, JobBT, JobPriority);
                     AllJobs.add(job);
                     TotalJobs++;//to count the number of job entered to the queue
+                    
                 }
 
             } // read "D" job
-            else if (command[0].equals("D")) {
+            else if (command[0].equalsIgnoreCase("D")) {
                 int Dtime = Integer.parseInt(command[1]);
                 DisplayTime = Dtime;
 
@@ -128,21 +130,18 @@ public class SmarterScheduling {
                     AllJobs.add(job);
 
                     // invoke dispaly system state
+                    displayEvent(job);
                 } else {
                     //Dtime ==999999 Infinity
                     // invoke start method.....
                     StartSystem();
 
-                    //loop to read the jobs from all jobQ
-                    for (Job J : AllJobs) {
-                        //invoke task0(Job J)
-                        Task0(J);
-                    }
+            
 
                     //----------------------------------------------------------
                     // print system final state& reset variables
                     if (DisplayTime == Infinity && CompletedQ.size() == TotalJobs) {
-                        finalDisplay(output);
+                        finalDisplay();
                         CompletedQ.clear();
                         HoldQ1.clear();
                         HoldQ2.clear();
@@ -161,9 +160,9 @@ public class SmarterScheduling {
 
             }//end of outer loop
 
-            input.close();
-            output.close();
         }
+        input.close();
+        output.close();
     }//end main
 
     public static void StartSystem() {
@@ -207,7 +206,7 @@ public class SmarterScheduling {
 
     }
 
-    public static void externalEvent() {//90%done
+    public static void externalEvent() {//done
 
         // work on all_jobs queue
         if (!AllJobs.isEmpty()) {
@@ -215,6 +214,7 @@ public class SmarterScheduling {
             // in case of "D" job
             if (job.getJobID() == 0) {
                 //invoke displayEvent
+                displayEvent(job);
 
             } else if (job.getJobMemS() <= AvailMemo
                     && job.getJobDevice() <= AvailDevs) {
@@ -222,12 +222,12 @@ public class SmarterScheduling {
                 Task0(job);
             } else {//  else if (J.JobMemS > AvailMemo || J.JobDevice > AvailDevs) {
 
-                  HoldQ3.add(job);
+                HoldQ3.add(job);
             }
         }
     }
 
-    public static void internalEvent() {
+    public static void internalEvent() {//95%done
         Jobterminate();
         if (!HoldQ1.isEmpty()) {
             Job job = HoldQ1.poll();
@@ -255,12 +255,13 @@ public class SmarterScheduling {
 
                 inHoldQ1_DRR(ExcJob);//DRR 
                 SR_AR_update();
-                if (HoldQ1.size() == 1) {
+             
+            }
+               if (HoldQ1.size() == 1) {
                     TQuantum = HoldQ1.peek().getRemBT();
                     putInCPU(HoldQ1.poll());
                     SR_AR_update();
                 }
-            }
         }
 
     }
@@ -300,21 +301,21 @@ public class SmarterScheduling {
         }
     }
 
-    public static void DynamicTQuantum() {
-        TQuantum = Math.min(AR, ExcJob.getRemBT());
+    public static int DynamicTQuantum() {
+      return Math.min(AR, ExcJob.getRemBT());
     }
 
     ////////////////////// Implementation of the Hold Queue 1 based on Dynamic Round Robin //////////////////////
-    public static void inHoldQ1_DRR(Job job) {//80% done
+    public static void inHoldQ1_DRR(Job job) {//90% done
         if (HoldQ1.isEmpty()) {
             // if there is no jobs in hold queue 1
             // the current executing job takes its time to finish
-            TQuantum = ExcJob.getRemBT();
+            TQuantum = job.getRemBT();
             // set the job start time of execution
-            ExcJob.setJobST(CurrentTime);
+            job.setJobST(CurrentTime);
             // set the executing job finish time
 
-            ExcJob.setJobFT(CurrentTime + TQuantum);
+            job.setJobFT(CurrentTime + TQuantum);
             //add the job to Q1
             HoldQ1.add(job);
             // update SR& AR
@@ -324,17 +325,13 @@ public class SmarterScheduling {
             // update SR& AR
             SR_AR_update();
 
-            // executing job is sent to hold queue 1 (ready queue)
-            HoldQ1.add(ExcJob);
-            // update SR& AR
-            SR_AR_update();
-            // start executing the next job
+            // start execJob j = HoldQ1.poll();uting the next job
             Job j = HoldQ1.poll();
 
             // send next job to CPU
             putInCPU(j);
             // set quantum time
-            DynamicTQuantum();
+            TQuantum=DynamicTQuantum();
             // set the job start time of execution
             ExcJob.setJobST(CurrentTime);
             // set the executing job finish time
@@ -345,20 +342,8 @@ public class SmarterScheduling {
 
         }
 
-//        HoldQ1.add(job);
-//        SR_AR_update();
-//
-////        ExcJob=HoldQ1.poll();
-////        putInCPU(ExcJob) ;
-////        
-//        if (HoldQ1.isEmpty()) {
-//            TQuantum = job.JobBT;
-//        }
-//        if (!HoldQ1.isEmpty()) {
-//            TQuantum = (int) ComputeAvgBT(HoldQ1);
-//            SR_AR_update();
-//        }
-//        //CPU executes P by TQ time
+
+        
     }
 
     public static void HoldQ2_DP() {//Task2 done 95%
@@ -473,7 +458,7 @@ public class SmarterScheduling {
 
         if (HoldQ1.isEmpty()) {
             AvgBT = BTi;
-            HoldQ1.add(J);
+            inHoldQ1_DRR(J);
             SR_AR_update();
 
         } else {
@@ -502,7 +487,7 @@ public class SmarterScheduling {
 
         double DBTi;
         double AvgBT = 0;
-        if (ExcJob.getRemBT() == 0) {
+      //  if (ExcJob.getRemBT() == 0) {
             AvgBT = ComputeAvgBT(HoldQ1);
 
             for (Job J : HoldQ3) {
@@ -523,14 +508,83 @@ public class SmarterScheduling {
                     }
                 }
 
-            }
+           // }
         }
     }
 
-    public static void finalDisplay(PrintWriter output) {//parameter print writer 
+    public static void finalDisplay() {//parameter print writer 
+        //displayFinal 
+
+        System.out.println("<< Final state of system: ");
+        System.out.println("  Current Available Main Memory = " + TotalMemo);
+        System.out.println("  Current Devices               = " + TotalDevs);
+        System.out.println("\n  Completed jobs: \n" + "  ----------------");
+        System.out.println("  Job ID   Arrival Time    Finish Time  Turnaround Time ");
+        System.out.println("  =================================================================");
+        double System_TAT = 0;
+
+        for (int j = 0; j < CompletedQ.size(); j++) {
+            Job J = CompletedQ.poll();
+            System_TAT += J.getJobTAT();//J.getFinishTime() - J.getArrivingTime()
+            // CompletedQ.put();
+            System.out.printf("%5d%11d%17d%15d\n", J.getJobID(), J.getJobArrvTime(),
+                    J.getJobFT(), J.getJobTAT());
+
+        }
+        System.out.printf("\n\n  System Turnaround Time =  %.3f\n\n", (System_TAT / CompletedQ.size()));
+        System.out.println("\n*********************************************************************\n");
+        ///clear alll
+        System.out.println("\n");
+
     }
 
-    public static void displayEvent(PrintWriter output) {
+    public static void displayEvent(Job Djob) {
+        System.out.println("\n<< At time " + Djob.getJobArrvTime() + ":");
+        System.out.println("  Current Available Main Memory = " + AvailMemo);
+        System.out.println("  Current Devices               = " + AvailDevs);
+        System.out.println("\n  Completed jobs: \n  ----------------");
+        System.out.println("  Job ID   Arrival Time    Finish Time  Turnaround Time \n"
+                + "  =================================================================");
+
+        for (int j = 0; j < CompletedQ.size(); j++) {
+            Job J = CompletedQ.poll();
+            System.out.printf("%5d%11d%17d%15d\n", J.getJobID(), J.getJobArrvTime(), J.getJobFT(), J.getJobTAT());
+            CompletedQ.add(J);
+        }
+
+        System.out.println();
+
+        System.out.println("\n\n  Hold Queue 3: \n  ----------------");
+        for (int j = 0; j < HoldQ3.size(); j++) {
+            Job J = HoldQ3.poll();
+            System.out.printf("%6d", J.getJobID());
+            HoldQ2.add(J);
+            System.out.println();
+        }
+
+        System.out.println("\n\n  Hold Queue 2: \n  ----------------");
+        for (int j = 0; j < HoldQ2.size(); j++) {
+            Job J = HoldQ2.poll();
+            System.out.printf("%6d", J.getJobID());
+            HoldQ2.add(J);
+
+        }
+        System.out.println();
+
+        System.out.println("\n\n  Hold Queue1 (Ready Queue): \n  ----------------");
+        System.out.println("  JobID    NeedTime    Total Execution Time \n"
+                + "  ===============================");
+        for (int j = 0; j < HoldQ1.size(); j++) {
+            Job J = HoldQ1.poll();
+            System.out.printf("%5d%10d%15d\n\n", J.getJobID(), J.getJobBT(), (J.getJobBT() - J.getRemBT()));
+            HoldQ1.add(J);
+        }
+        System.out.println("\n\n  Process running on the CPU: \n  ----------------------------");
+        System.out.println("  Job ID   NeedTime    Total Execution Time");
+
+        //check  Total Execution Time calc...
+        System.out.printf("%5d%10d%15d\n\n\n", ExcJob.getJobID(), ExcJob.getJobBT(), (ExcJob.getJobBT() - ExcJob.getRemBT()));
+
     }
 
 }
