@@ -25,6 +25,7 @@ public class Job {
      private int JobWeight;// job weight depends on its priority
      private boolean isTermenated= false;
      private boolean isNew= true;
+     private int DynamicPriority;
      
     public Job (){}
     
@@ -187,6 +188,17 @@ public class Job {
     public void setIsNew(boolean isNew) {
         this.isNew = isNew;
     }
+        
+    //-------------------------------------------------
+
+    public int getDynamicPriority() {
+        return DynamicPriority;
+    }
+
+    public void setDynamicPriority(int DynamicPriority) {
+        this.DynamicPriority = DynamicPriority;
+    }
+    
     
     
     //----------------------printing the Job info----------------------------------

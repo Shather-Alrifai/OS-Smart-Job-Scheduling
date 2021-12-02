@@ -115,8 +115,8 @@ public class SmarterScheduling {
                     job = new Job(ArrvTime, JobID, JobMemS, JobDevice, JobBT, JobPriority);
                     AllJobs.add(job);
                     TotalJobs++;//to count the number of job entered to the queue
-                     }
-                
+                }
+
             } // read "D" job
             else if (command[0].equals("D")) {
                 int Dtime = Integer.parseInt(command[1]);
@@ -126,12 +126,18 @@ public class SmarterScheduling {
                     // add job D to valid jobs Q
                     job = new Job(Dtime, 0, Infinity, Infinity, Infinity, Infinity);
                     AllJobs.add(job);
-                    
+
                     // invoke dispaly system state
                 } else {
                     //Dtime ==999999 Infinity
                     // invoke start method.....
                     StartSystem();
+
+                    //loop to read the jobs from all jobQ
+                    for (Job J : AllJobs) {
+                        //invoke task0(Job J)
+                        Task0(J);
+                    }
 
                     //----------------------------------------------------------
                     // print system final state& reset variables
@@ -153,12 +159,6 @@ public class SmarterScheduling {
 
                 }
 
-                //loop to read the jobs from all jobQ
-                for (Job J : AllJobs) {
-                     //invoke task0(Job J)
-                    Task0(J);
-                    }
-
             }//end of outer loop
 
             input.close();
@@ -167,6 +167,7 @@ public class SmarterScheduling {
     }//end main
 
     public static void StartSystem() {
+        //send the 1st job to cpu
         Job firstJob = AllJobs.poll();
         CurrentTime = firstJob.getJobArrvTime();
         // allocate memory& devices to the job
@@ -189,12 +190,16 @@ public class SmarterScheduling {
             } else {
                 e = ExcJob.getJobFT();
             }
+            // update system time each iteration
             CurrentTime = Math.min(i, e);
+            // the system works acccording to i and e values
             if (i < e) {
                 externalEvent();
             } else if (i > e) {
                 internalEvent();
             } else {
+                // if i == e
+                // perform internal events before external events
                 internalEvent();
                 externalEvent();
             }
@@ -202,7 +207,7 @@ public class SmarterScheduling {
 
     }
 
-    public static void externalEvent() {
+    public static void externalEvent() {//90%done
 
         // work on all_jobs queue
         if (!AllJobs.isEmpty()) {
@@ -211,27 +216,15 @@ public class SmarterScheduling {
             if (job.getJobID() == 0) {
                 //invoke displayEvent
 
-            } else {  // in case of "A" job
-                // if there were available main memory and devices 
-                // the job is sent to hold queue 1 (ready queue)
-                if (job.getJobMemS() <= AvailMemo
-                        && job.getJobDevice() <= AvailDevs) {
-                    AvailMemo -= job.getJobMemS();
-                    AvailDevs -= job.getJobDevice();
+            } else if (job.getJobMemS() <= AvailMemo
+                    && job.getJobDevice() <= AvailDevs) {
+                //invoke task0 
+                Task0(job);
+            } else {//  else if (J.JobMemS > AvailMemo || J.JobDevice > AvailDevs) {
 
-                    //add to Q1  Hold1_DRR(job);
-                    // update SR& AR
-                    SR_AR_update();
-                } else {
-                    // if there were not available main memory and devices
-                    // the job is sent to hold queue 2 (waiting queue)
-                    //invoke add to Hold Q2
-                    // save the entred time
-                    job.setEnterQ2time(CurrentTime);
-                }
+                  HoldQ3.add(job);
             }
         }
-
     }
 
     public static void internalEvent() {
@@ -244,7 +237,7 @@ public class SmarterScheduling {
 
     }
 
-    public static void Jobterminate() {
+    public static void Jobterminate() {//95% done
 
         if (ExcJob != null) {
             if (ExcJob.getRemBT() == 0) {
@@ -256,6 +249,8 @@ public class SmarterScheduling {
                 ExcJob = null;
 
                 //invoke task1 task2
+                Task1();
+                HoldQ2_DP(); //Task2
             } else {
 
                 inHoldQ1_DRR(ExcJob);//DRR 
@@ -291,19 +286,18 @@ public class SmarterScheduling {
 
     }
 
-    public static void SR_AR_update() {
+    public static void SR_AR_update() {//done
         if (HoldQ1.isEmpty()) {
             AR = 0;
-        }
-        SR = 0;
-        for (Job j : HoldQ1) {
-            SR += (j.getJobWeight() * j.getRemBT());
-        }
+        } else {
+            SR = 0;
+            for (Job j : HoldQ1) {
+                SR += (j.getJobWeight() * j.getRemBT());
+            }
 
-        AR = (SR / HoldQ1.size());
-        //   TQuantum = AR;
-        // DynamicTQuantum();
+            AR = (SR / HoldQ1.size());
 
+        }
     }
 
     public static void DynamicTQuantum() {
@@ -311,7 +305,7 @@ public class SmarterScheduling {
     }
 
     ////////////////////// Implementation of the Hold Queue 1 based on Dynamic Round Robin //////////////////////
-    public static void inHoldQ1_DRR(Job job) {
+    public static void inHoldQ1_DRR(Job job) {//80% done
         if (HoldQ1.isEmpty()) {
             // if there is no jobs in hold queue 1
             // the current executing job takes its time to finish
@@ -326,6 +320,10 @@ public class SmarterScheduling {
             // update SR& AR
             SR_AR_update();
         } else {
+            HoldQ1.add(job);
+            // update SR& AR
+            SR_AR_update();
+
             // executing job is sent to hold queue 1 (ready queue)
             HoldQ1.add(ExcJob);
             // update SR& AR
@@ -334,7 +332,7 @@ public class SmarterScheduling {
             Job j = HoldQ1.poll();
 
             // send next job to CPU
-            ExcJob = j;
+            putInCPU(j);
             // set quantum time
             DynamicTQuantum();
             // set the job start time of execution
@@ -363,74 +361,91 @@ public class SmarterScheduling {
 //        //CPU executes P by TQ time
     }
 
-    public static void HoldQ2_DP() {//Task2
+    public static void HoldQ2_DP() {//Task2 done 95%
         double avgWT = 0;
         double sumWT = 0;
         Job jobDR;
         int size = HoldQ2.size();
         if (!HoldQ2.isEmpty()) {
-            for (int j = 0; j < HoldQ2.size(); j++) {
-                jobDR = HoldQ2.poll();
-                jobDR.setWaitT(CurrentTime - jobDR.getEnterQ2time());
-                sumWT += jobDR.getWaitT();
-                //HoldQ2.add(jobDR);
+            for (Job J : HoldQ2) {
+                J.setWaitT(CurrentTime - J.getEnterQ2time());
+                sumWT += J.getWaitT();
+
             }
-            avgWT = (sumWT / size);
+            avgWT = (double) (sumWT / size);
 
             // update priority for old jobs only
-            for (int j = 0; j < HoldQ2.size(); j++) {
-                jobDR = HoldQ2.poll();
-                if ((jobDR.getWaitT() - avgWT) > 0 && !jobDR.isIsNew()) {
-                    jobDR.setJobPriority((int) (((jobDR.getWaitT() - avgWT) * 0.2) + (jobDR.getJobPriority() * 0.8)));
-                } else if (jobDR.isIsNew()) {
-                    jobDR.setJobPriority(jobDR.getJobPriority());
-                    jobDR.setIsNew(false);
-                    //  HoldQ2.add(jobDR);
+            for (Job J : HoldQ2) {
+                if ((J.getWaitT() - avgWT) > 0 && !J.isIsNew()) {
+                    J.setDynamicPriority((int) (((J.getWaitT() - avgWT) * 0.2) + (J.getJobPriority() * 0.8)));
+                } else if (J.isIsNew()) {
+                    J.setJobPriority(J.getDynamicPriority());
+                    J.setIsNew(false);
                 }
 
             }
             SortHoldQ2();
 
-            //move one or more jobs to the Ready Queue
-            for (int j = 0; j < HoldQ2.size(); j++) {
-                jobDR = HoldQ2.poll();
-                if (jobDR.getJobMemS() <= AvailMemo && jobDR.getJobDevice() <= AvailDevs) {
-                    AvailMemo -= jobDR.getJobMemS();
-                    AvailMemo -= jobDR.getJobDevice();
-
-                    inHoldQ1_DRR(jobDR);
+            //move one jobs to the Ready Queue
+            Object[] Queue2 = HoldQ2.toArray();
+            for (int i = 0; i < Queue2.length; i++) {
+                Job job1 = (Job) Queue2[i];
+                Job job2 = (Job) Queue2[i + 1];
+                if (job1.getDynamicPriority() > job2.getDynamicPriority()) {
+//                    HoldQ2.remove(job1);
+                    inHoldQ1_DRR(job1);
                     SR_AR_update();
                 } else {
-                    HoldQ2.add(jobDR);
+
+                    //                    HoldQ2.remove(job2);
+                    inHoldQ1_DRR(job2);
+                    SR_AR_update();
                 }
             }
+
+//            for (int j = 0; j < HoldQ2.size(); j++) {
+//                jobDR = HoldQ2.poll();
+//                if (jobDR.getJobMemS() <= AvailMemo && jobDR.getJobDevice() <= AvailDevs) {
+//                    AvailMemo -= jobDR.getJobMemS();
+//                    AvailMemo -= jobDR.getJobDevice();
+//
+//                    inHoldQ1_DRR(jobDR);
+//                    SR_AR_update();
+//                } else {
+//                    HoldQ2.add(jobDR);
+//                }
+//            }
         }
     }
 
-    public static void SortHoldQ2() {
+    public static void SortHoldQ2() {//95% done
+        // Object[] jobQ2 = HoldQ2.toArray();
         Job[] jobQ2 = new Job[HoldQ2.size()];
         for (int n = 0; n < jobQ2.length; n++) {
             jobQ2[n] = HoldQ2.poll();
         }
         for (int i = 0; i < jobQ2.length; i++) {
-            for (int n = i + 1; n < jobQ2.length; n++) {
-                Job tmp = null;
-                if (jobQ2[i].getJobPriority() < jobQ2[n].getJobPriority()) {
-                    //swap jobs
-                    tmp = jobQ2[i];
-                    jobQ2[i] = jobQ2[n];
-                    jobQ2[n] = tmp;
+            //   for (int n = i + 1; n < jobQ2.length; n++) {//Replaced the n with i+1
+            Job temp = null;
+            if (jobQ2[i].getJobPriority() < jobQ2[i + 1].getJobPriority()) {
+                //swap jobs
+                temp = jobQ2[i];
+                jobQ2[i] = jobQ2[i + 1];
+                jobQ2[i + 1] = temp;
 
-                } else if (jobQ2[i].getJobPriority() == jobQ2[n].getJobPriority()) {
-                    if (jobQ2[n].getJobID() < jobQ2[i].getJobID()) {
-                        //swap jobs
-                        tmp = jobQ2[i];
-                        jobQ2[i] = jobQ2[n];
-                        jobQ2[n] = tmp;
-                    }
+            } else if (jobQ2[i].getJobPriority() == jobQ2[i + 1].getJobPriority()) {
+                if (jobQ2[i + 1].getJobID() < jobQ2[i].getJobID()) {
+                    //swap jobs
+                    temp = jobQ2[i];
+                    jobQ2[i] = jobQ2[i + 1];
+                    jobQ2[i + 1] = temp;
                 }
             }
+            //  }
         }
+        //clear Q2 to make sure we start fresh 
+        HoldQ2.clear();
+
         //re fill Q2 with the jobs in order
         for (int i = 0; i < jobQ2.length; i++) {
             HoldQ2.add(jobQ2[i]);
@@ -438,7 +453,7 @@ public class SmarterScheduling {
 
     }
 
-    public static double ComputeAvgBT(Queue<Job> Queue) {
+    public static double ComputeAvgBT(Queue<Job> Queue) {//done
         double AvgBT = 0;
         double sumBT = 0;
 
@@ -449,7 +464,7 @@ public class SmarterScheduling {
         return AvgBT = sumBT / Queue.size();
     }
 
-    public static void Task0(Job J) {
+    public static void Task0(Job J) {//done
 //BTi is the process burst time
 //AvgBT is the average burst time of all processes in Hold Queue 1
 //X and Y represent available Memory and Devices, respectively.
@@ -461,15 +476,13 @@ public class SmarterScheduling {
             HoldQ1.add(J);
             SR_AR_update();
 
-        } else if (J.JobMemS > AvailMemo || J.JobDevice > AvailDevs) {
-            HoldQ3.add(J);
-
         } else {
             AvgBT = ComputeAvgBT(HoldQ1);
         }
 
         if (BTi > AvgBT) {//put the process in Hold Queue 2
             HoldQ2.add(J);
+            J.setEnterQ2time(CurrentTime);
 
             AvailMemo -= J.JobMemS;
 
@@ -485,29 +498,32 @@ public class SmarterScheduling {
 
     }
 
-    public static void Task1(Job J) {
-        double DBTi = J.JobBT;
+    public static void Task1() {//98%done
+
+        double DBTi;
         double AvgBT = 0;
         if (ExcJob.getRemBT() == 0) {
             AvgBT = ComputeAvgBT(HoldQ1);
-        }
-        for (Job job : HoldQ3) {
-            if (job.JobMemS <= AvailMemo && job.JobDevice <= AvailDevs) {
-                if (DBTi > AvgBT) {//put the process in Hold Queue 2
-                    HoldQ2.add(J);
 
-                    AvailMemo -= J.JobMemS;
+            for (Job J : HoldQ3) {
+                DBTi = J.getJobBT();
+                if (J.JobMemS <= AvailMemo && J.JobDevice <= AvailDevs) {
+                    if (DBTi > AvgBT) {//put the process in Hold Queue 2
+                        HoldQ2.add(J);
 
-                    AvailDevs -= J.JobDevice;
+                        AvailMemo -= J.JobMemS;
 
-                } else { //put the process in Hold Queue 1
+                        AvailDevs -= J.JobDevice;
 
-                    inHoldQ1_DRR(J);
-                    AvailMemo -= J.JobMemS;
-                    AvailDevs -= J.JobDevice;
+                    } else { //put the process in Hold Queue 1
+
+                        inHoldQ1_DRR(J);
+                        AvailMemo -= J.JobMemS;
+                        AvailDevs -= J.JobDevice;
+                    }
                 }
-            }
 
+            }
         }
     }
 
