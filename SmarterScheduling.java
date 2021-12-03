@@ -83,7 +83,7 @@ public class SmarterScheduling {
         Job job;
 
         // here we have 2 nested loops ..outer loop that invokes all methods, inner loop that read and creates jobs 
-        while (input.hasNextLine()) {
+        while (input.hasNext()) {
             // read line by line from the input file
             inputLn = input.nextLine().replaceAll("[a-zA-Z]=", "");
             // separate the info in an array
@@ -173,7 +173,8 @@ public class SmarterScheduling {
         // available memory = system main memory - first job requested memory
         AvailMemo = TotalMemo - firstJob.getJobMemS();
         // available devices = system serial devices - first job requested devices
-        AvailDevs = TotalMemo - firstJob.getJobDevice();
+        AvailDevs = TotalDevs - firstJob.getJobDevice();
+        TQuantum=firstJob.JobBT;
         //ENTER FIRST JOB DIRECT TO THE CPU
         putInCPU(firstJob);
 
@@ -240,7 +241,7 @@ public class SmarterScheduling {
     public static void Jobterminate() {//95% done
 
         if (ExcJob != null) {
-            if (ExcJob.getRemBT() == 0) {
+            if (ExcJob.getRemBT() <= 0) {
                 //the job is released from cpu , returns the resources 
                 CompletedQ.add(ExcJob);
                 AvailDevs += ExcJob.getJobDevice();
@@ -251,17 +252,20 @@ public class SmarterScheduling {
                 //invoke task1 task2
                 Task1();
                 HoldQ2_DP(); //Task2
+                
+                 if (!HoldQ1.isEmpty()) {
+                     putInCPU(HoldQ1.poll());
+                    TQuantum = DynamicTQuantum();
+                    
+                    SR_AR_update();
+                }
             } else {
 
                 inHoldQ1_DRR(ExcJob);//DRR 
                 SR_AR_update();
-             
+            
             }
-               if (HoldQ1.size() == 1) {
-                    TQuantum = HoldQ1.peek().getRemBT();
-                    putInCPU(HoldQ1.poll());
-                    SR_AR_update();
-                }
+               
         }
 
     }
@@ -269,10 +273,10 @@ public class SmarterScheduling {
     public static void putInCPU(Job CPUjob) {
         ExcJob = CPUjob;
         // set quantum time
-        DynamicTQuantum();
+    //    DynamicTQuantum();
         // set the job start time of execution
         ExcJob.setJobST(CurrentTime);
-
+       // ExcJob.setRemBT(ExcJob.getJobBT()); 
         if (ExcJob.getRemBT() > TQuantum) {
             ExcJob.setJobFT(CurrentTime + TQuantum);
             ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum);

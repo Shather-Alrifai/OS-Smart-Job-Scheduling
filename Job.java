@@ -37,9 +37,11 @@ public class Job {
         this.JobBT = JobBT;
         this.JobPriority = JobPriority;
         this.JobFT = 0;
-        this.JobST=0;
+        this.JobST=0;//////////
         this.JobTAT = 0;
-        this.JobAccuredT = 0;
+        this.JobAccuredT = 0;////////
+        this.RemBT=JobBT;
+        this.isNew=true;
         // set process weight according to its priority
         this.JobWeight = this.JobPriority == 1 ? 2 : 1;
     }
