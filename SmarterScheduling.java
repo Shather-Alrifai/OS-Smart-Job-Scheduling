@@ -529,8 +529,8 @@ public class SmarterScheduling {
 
         for (int j = 0; j < CompletedQ.size(); j++) {
             Job J = CompletedQ.poll();
-            System_TAT += J.getJobTAT();//J.getFinishTime() - J.getArrivingTime()
-            // CompletedQ.put();
+            System_TAT += (J.getJobFT() - J.getJobArrvTime());//J.getJobTAT();
+            CompletedQ.add(J);
             System.out.printf("%5d%11d%17d%15d\n", J.getJobID(), J.getJobArrvTime(),
                     J.getJobFT(), J.getJobTAT());
 
