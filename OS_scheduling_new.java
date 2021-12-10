@@ -95,9 +95,120 @@ public class OS_scheduling_new {
         //------------------------------------------------------------
 
         // Read one system configuration.
-        readFile();
-        // StartSystem();//issue starting ,infinte loop..
+        // readFile();
+        String line;
+        String[] command;
+        // start reading from the input file
 
+        while (input.hasNext()) {
+            // read line by line from the input file
+            line = input.nextLine().replaceAll("[a-zA-Z]=", "");
+            // separate the info in an array
+            command = line.split(" ");
+            //------------------------------------------------------------------
+            // read system configuration
+            switch (command[0]) {
+                //--------------------------------------------------------------
+                case "C":
+                    SystemStartTime = Integer.parseInt(command[1]);
+                    CurrentTime = SystemStartTime;
+                    TotalMemo = Integer.parseInt(command[2]);
+                    AvailMemo = TotalMemo;
+                    TotalDevs = Integer.parseInt(command[3]);
+                    AvailDevs = TotalDevs;
+                    break;
+                //--------------------------------------------------------------
+                case "A":
+                    int arrival_time = Integer.parseInt(command[1]);
+                    int job_id = Integer.parseInt(command[2]);
+                    int requested_mm = Integer.parseInt(command[3]);
+                    int requested_d = Integer.parseInt(command[4]);
+                    int burst_time = Integer.parseInt(command[5]);
+                    int job_priority = Integer.parseInt(command[6]);
+                    // create process for all valid jobs then add them to all_jobs queue
+                    if (requested_mm <= TotalMemo && requested_d <= TotalDevs) {
+                        AllJobs.add(new Job(arrival_time, job_id, requested_mm, requested_d, burst_time, job_priority));
+                        TotalJobs++;
+                    }
+                    break;
+                case "D":
+                    int time = Integer.parseInt(command[1]);
+                    if (time != 999999) {
+                        // print the state of the system at a specified time
+                        AllJobs.add(new Job(time));
+                    } else {
+                        //----------------------------------------------------------
+                        // poll out first job to be executed
+                        Job first_job = AllJobs.poll();
+                        // set system time = first job arraival time
+                        CurrentTime = first_job.getJobArrvTime();
+                        // allocate memory& devices to the job
+                        // available memory = system main memory - first job requested memory
+                        AvailMemo -= first_job.getJobDevice();
+                        // available devices = system serial devices - first job requested devices
+                        AvailDevs -= first_job.getJobDevice();
+                        // set quantum = first job burst time
+                        TQuantum = first_job.getJobBT();
+                        // send first job to CPU
+                        ExcJob = first_job;
+                        // set the job start time of execution
+                        ExcJob.setJobST(CurrentTime);
+                        // set the executing job finish time
+                        ExcJob.setJobFT(TQuantum + CurrentTime);
+                        SR_AR_update();
+                        //----------------------------------------------------------
+                        // send the rest of jobs to cpu
+                        while (TotalJobs != CompletedQ.size()) {
+                            // set i value to perform internal events
+                            if (AllJobs.isEmpty()) {
+                                i = Infinity;
+                            } else {
+                                i = AllJobs.peek().getJobArrvTime();
+                            }
+                            // set e value to perform external events
+                            if (ExcJob == null) {
+                                e = Infinity;
+                            } else {
+                                e = ExcJob.getJobFT();
+                            }
+                            //------------------------------------------------------
+                            // update system time each iteration
+                            CurrentTime = Math.min(e, i);
+                            //------------------------------------------------------
+                            // the system works acccording to i and e values
+                            // System.out.println(exe_job + "i=" + i + "e=" + e);
+                            if (i < e) {
+                                externalEvent();
+                            } else if (i > e) {
+                                internalEvent();
+                            } else {
+                                // if i == e
+                                // perform internal events before external events
+                                internalEvent();
+                                externalEvent();
+                            }
+                        } // end of while loop
+                        //----------------------------------------------------------
+                        // print system final state& reset variables
+                        if (time == 999999 && CompletedQ.size() == TotalJobs) {
+                            finalDisplay();
+                            CompletedQ.clear();
+                            HoldQ1.clear();
+                            HoldQ2.clear();
+                            AllJobs.clear();
+                            ExcJob = null;
+                            SystemStartTime = 0;
+                            CurrentTime = 0;
+                            TQuantum = 0;
+                            TotalJobs = 0;
+                            time = 0;
+                            SR = 0;
+                            AR = 0;
+                        }
+                    }// end of dealing with this system configuration
+                    break;
+            }
+        }// end of while loop that reads from input file
         input.close();
         output.close();
 
@@ -263,7 +374,7 @@ public class OS_scheduling_new {
                 SR_AR_update();
                 AvailMemo -= J.getJobMemS();
                 AvailDevs -= J.getJobDevice();
-                TQuantum = DynamicTQuantum();
+                //TQuantum = DynamicTQuantum();
                 AvgBT = ComputeAvgBT();
 
             } else if (J.getJobMemS() <= AvailMemo && J.getJobDevice() <= AvailDevs) {// If there is enough main memory and devices for the job
@@ -275,7 +386,7 @@ public class OS_scheduling_new {
                     AvailMemo -= J.getJobMemS();
                     AvailDevs -= J.getJobDevice();
                     SR_AR_update();
-                    TQuantum = DynamicTQuantum();
+                    //TQuantum = DynamicTQuantum();
                     AvgBT = ComputeAvgBT();
                 } else {
                     HoldQ2.add(J);
@@ -329,19 +440,15 @@ public class OS_scheduling_new {
     public static void internalEvent() {
         // work on CPU
         // calcualte the remaining burst time after execution
-        ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum);
+        ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum); //NULL POINTER
         // if job burst time is done
         if (ExcJob.getRemBT() <= 0) {
             // job is terminated
 
-            Jobterminate();
-            //invoke task 1 move from q3 
-            Task1();
-            //invoke  DP  task2
-            HoldQ2_DP();
+            Jobterminate();//correct 
 
             // next job is sent to CPU
-            if (!HoldQ1.isEmpty()) {
+            if (!HoldQ1.isEmpty()) {//this part is correct 100%
                 ExcJob = HoldQ1.poll();
                 // update SR& AR
                 SR_AR_update();
@@ -352,7 +459,7 @@ public class OS_scheduling_new {
                 // set the executing job finish time
                 int finish = Math.min(ExcJob.getRemBT(), TQuantum);
                 ExcJob.setJobFT(CurrentTime + finish);
-
+                AvgBT = ComputeAvgBT();
             }
         } else {
             // if the job is not finished, it is sent to hold queue 1 (ready queue)
@@ -363,20 +470,20 @@ public class OS_scheduling_new {
 
     public static void Jobterminate() {
 
-           if (ExcJob != null) {
-        AvailMemo += ExcJob.getJobMemS();
-        AvailDevs += ExcJob.getJobDevice();
-        // add the finished job to complete queue 
-        CompletedQ.add(ExcJob);
-        // no jobs in CPU
-        ExcJob = null;
+        if (ExcJob != null) {
+            AvailMemo += ExcJob.getJobMemS();
+            AvailDevs += ExcJob.getJobDevice();
+            // add the finished job to complete queue 
+            CompletedQ.add(ExcJob);
+            // no jobs in CPU
+            ExcJob = null;
 
-        // move processes from HQ2 to HQ1 and From HQ3 to HQ1 OR HQ2 if possible
-        // task 1
-        Task1();
-        //invoke DP task 2
-       HoldQ2_DP() ;//correct
-         }
+            // move processes from HQ2 to HQ1 and From HQ3 to HQ1 OR HQ2 if possible
+            // task 1
+            Task1();//correct
+            //invoke DP task 2
+            HoldQ2_DP();//correct
+        }
 
     }
 
@@ -400,42 +507,42 @@ public class OS_scheduling_new {
         return Math.min(AR, ExcJob.getRemBT());
     }
 
-    public static void DRR() {//invkoed when a job terminates to either add the excuting to q1 since it needs more time or move the next job to execute 
+    public static void DRR() {//95% correctooo
+//invkoed when a job terminates to either add the excuting to q1 since it needs more time or move the next job to execute 
 
-        if (!HoldQ1.isEmpty()) {
+        if (HoldQ1.isEmpty()) {
+            // if there is no jobs in hold queue 1
+            // the current executing job takes its time to finish
+            TQuantum = ExcJob.getJobBT();
+            // set the job start time of execution
+            ExcJob.setJobST(CurrentTime);
+            // set the executing job finish time
+            int finish = Math.min(TQuantum = ExcJob.getJobBT(), TQuantum);
+            ExcJob.setJobFT(CurrentTime + finish);
+            // update SR& AR
+            SR_AR_update();
+
+        } else {//correct
+
             // executing job is sent to hold queue 1 (ready queue)
             HoldQ1.add(ExcJob);
             // update SR& AR
             SR_AR_update();
-            //update quantum time
-            TQuantum = DynamicTQuantum();//?????????/
-
-            // start executing the next job
             Job job = HoldQ1.poll();
             // update SR& AR
             SR_AR_update();
             //update quantum time
-            TQuantum = DynamicTQuantum();
+            TQuantum = Math.min(job.getJobBT(), AR);
             // send next job to CPU
             ExcJob = job;
-            // set the job start time of execution
-            ExcJob.setJobST(CurrentTime);
-            // set the executing job finish time
-            int finish = Math.min(ExcJob.getRemBT(), TQuantum);
-            ExcJob.setJobFT(TQuantum + finish);
 
-        } else {//if Q1 is empty return thie job to execute
-            // the current executing job staye in cpu & takes its time to finish
-            TQuantum = ExcJob.getRemBT();
             // set the job start time of execution
             ExcJob.setJobST(CurrentTime);
             // set the executing job finish time
             int finish = Math.min(ExcJob.getRemBT(), TQuantum);
-            ExcJob.setJobFT(TQuantum + finish);
-            // update SR& AR
+            ExcJob.setJobFT(CurrentTime + finish);
             SR_AR_update();
-            //update quantum time or no need since its the last job???
-            //   TQuantum = DynamicTQuantum();
+            AvgBT = ComputeAvgBT();
 
         }
 
@@ -464,7 +571,7 @@ public class OS_scheduling_new {
                 if (AvailMemo >= job.getJobMemS()
                         && AvailDevs >= job.getJobMemS()) {
                     AvgBT = ComputeAvgBT();
-                    //  updatedResources(job.getNumOfMemoryUnit(), job.getNumOfDevices());
+                   
                     if (job.getJobBT() <= AvgBT) {
                         HoldQ3.remove(job);
                         HoldQ1.add(job);
@@ -482,35 +589,7 @@ public class OS_scheduling_new {
                 }
             }
         }
-//            for (Job J : HoldQ3) {
-//                if (J.getJobMemS() <= AvailMemo && J.getJobDevice() <= AvailDevs) {
-//                    AvgBT = ComputeAvgBT();
-//                    if (J.getRemBT() > AvgBT) {
-//                        // The required main memory and devices are allocated to the process
-////                    AvailMemo -= J.getJobMemS();
-////                    AvailDevs -= J.getJobDevice();
-//
-//                        HoldQ2.add(J);
-//                        J.setEnterQ2time(CurrentTime);
-//                        HoldQ3.remove(J);
-//
-//                    } else {
-//                        // The required main memory and devices are allocated to the process
-//                        AvailMemo -= J.getJobMemS();
-//                        AvailDevs -= J.getJobDevice();
-//
-//                        // The process is put in the Ready Queue.
-//                        HoldQ3.remove(J);
-//                        HoldQ1.add(J);
-//                        SR_AR_update();
-//                        //           TQuantum = DynamicTQuantum();//null pointer
-//                        AvgBT = ComputeAvgBT();
-//
-//                    }
-//                }// else if there isnt enough resources
-//            }   //end for each loop
-        //}
-
+            
     }
 
     public static void HoldQ2_DP() {//Task2 done 100%
@@ -521,9 +600,9 @@ public class OS_scheduling_new {
 
             // Sort holdQ2 
             SortHoldQ2();//correcttto
-            
+
             Job job = HoldQ2.peek();
-         System.out.println("currentTime: " + CurrentTime + "jobID: " + job.getJobID() + "DynamicPriority: " + job.getDynamicPriority());
+            System.out.println("currentTime: " + CurrentTime + "jobID: " + job.getJobID() + "DynamicPriority: " + job.getDynamicPriority());
 
             //try to move job to Q1
             if (job.getJobMemS() <= AvailMemo && job.getJobDevice() <= AvailDevs) {
@@ -533,7 +612,6 @@ public class OS_scheduling_new {
                 // The Job at the head is put in the Ready Queue.Q1
                 HoldQ1.add(HoldQ2.poll()); /// no need to use remove since poll removes 
                 SR_AR_update();
-            
 
             }
 
@@ -552,8 +630,6 @@ public class OS_scheduling_new {
         }
 
         double avgWait = totalWait / HoldQ2.size();
-
-        
 
         // Set the dynamic priority for all processes.
         for (Job J : HoldQ2) {
@@ -607,7 +683,7 @@ public class OS_scheduling_new {
         System.out.println("\n  Completed jobs: \n  ----------------");
         System.out.println("  Job ID   Arrival Time    Finish Time  Turnaround Time \n"
                 + "  =================================================================");
-        //  Collections.sort(CompletedQ, new sortbyID());
+        //    Collections.sort(CompletedQ, new sortbyID());
         for (Job J : CompletedQ) {
             J.setJobTAT(J.getJobFT() - J.getJobArrvTime());
             System.out.printf("    %-10d %-12d %-15d %-15d %n", J.getJobID(), J.getJobArrvTime(), J.getJobFT(), J.getJobTAT());
@@ -630,7 +706,7 @@ public class OS_scheduling_new {
                 + "  ===============================");
         for (Job J : HoldQ1) {
             //set job execution time...
-
+            J.setExecution_time(J.getJobBT() - J.getRemBT());
             System.out.printf("%5d%10d%15d\n\n", J.getJobID(), J.getJobBT(), J.getExecution_time());
 
         }
@@ -639,7 +715,7 @@ public class OS_scheduling_new {
         System.out.println("  Job ID   NeedTime    Total Execution Time");
         if (ExcJob != null) {
             //check  Total Execution Time calc...
-
+            ExcJob.setExecution_time(ExcJob.getJobBT() - ExcJob.getRemBT());
             System.out.printf("%5d%10d%15d\n\n\n", ExcJob.getJobID(), ExcJob.getJobBT(), ExcJob.getExecution_time());
         }
 
@@ -655,6 +731,8 @@ public class OS_scheduling_new {
         System.out.println("  Job ID   Arrival Time    Finish Time  Turnaround Time ");
         System.out.println("  =================================================================");
         double system_turnaround_time = 0;
+        //  Collections.sort(CompletedQ, new sortbyID());
+
         for (Job J : CompletedQ) {
             J.setJobTAT(J.getJobFT() - J.getJobArrvTime());
             system_turnaround_time += J.getJobTAT();
