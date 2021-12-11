@@ -27,6 +27,7 @@ public class Job {
     private int JobWeight;// job weight depends on its priority
     private Double DynamicPriority;
     private int execution_time;
+    private Job next;
 
     public Job(int JobArrvTime, int JobID, int JobMemS, int JobDevice, int JobBT, int JobPriority) {
         this.JobArrvTime = JobArrvTime;
@@ -49,6 +50,14 @@ public class Job {
     public Job(int Dtime) {
         this.JobID = 0;
         this.JobArrvTime = Dtime;
+    }
+
+    public Job getNext() {
+        return next;
+    }
+
+    public void setNext(Job next) {
+        this.next = next;
     }
 
     //-------------------------------------------------

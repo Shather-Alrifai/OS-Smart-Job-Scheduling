@@ -23,24 +23,12 @@ public class OS_scheduling_new {
     public static LinkedList<Job> HoldQ1 = new LinkedList<Job>();
     //Q2 ,longer jobs Q
     public static LinkedList<Job> HoldQ2 = new LinkedList<Job>();
-//    public static Queue<Job> HoldQ2 = new LinkedList<Job>(new Comparator<Job>() {
-//        @Override
-//        public int compare(Job J1, Job J2) {
-//            if (J1.getDynamicPriority() > J1.getDynamicPriority() ) {
-//                return -1;
-//            } else if (J1.getDynamicPriority() == J2.getDynamicPriority()) {
-//                return 0;
-//            } else {
-//                return 1;
-//            }
-//        }
-//
-//    });
+
     //Q3 ,waiting linked list
     public static LinkedList<Job> HoldQ3 = new LinkedList<Job>();
 
     //completed job Q linkedlist
-    public static LinkedList<Job> CompletedQ = new LinkedList<Job>();
+    static LinkedList<Job> CompletedQ = new LinkedList<Job>();
 
     static int TotalMemo = 0;//Main memory of the system
     static int AvailMemo = 0;//remaining Available memory
@@ -70,20 +58,10 @@ public class OS_scheduling_new {
     static Scanner input;
     static double AvgBT = 0;
 
-    // For while loop that reads system configurations from the input files.
-//    private static boolean system_running = true;
-//    // For while loop that deals with each system configuration separately.
-//    private static boolean new_system = true;
-//    // To determine the job in the CPU will terminate by quantum or by burst time of the job itself.
-//    private static int terminate_by_quantum = 0;
-//    private static int terminate_by_burst = 0;
-//
-//    private static int AT_process_at_beginnig = -1;
-//    private static int finish_time_CPU = -1;
 //Main method 
     public static void main(String[] args) throws Exception {
         //create file object
-        File inFile = new File("input1.txt");
+        File inFile = new File("input2.txt");
         if (!inFile.exists()) {
             System.out.println("not exists");
             System.exit(0);
@@ -95,12 +73,12 @@ public class OS_scheduling_new {
         //------------------------------------------------------------
 
         // Read one system configuration.
-        // readFile();
+       
         String line;
         String[] command;
         // start reading from the input file
 
-        while (input.hasNext()) {
+        while (input.hasNextLine()) {
             // read line by line from the input file
             line = input.nextLine().replaceAll("[a-zA-Z]=", "");
             // separate the info in an array
@@ -137,6 +115,8 @@ public class OS_scheduling_new {
                         // print the state of the system at a specified time
                         AllJobs.add(new Job(time));
                     } else {
+                        Dtime = time;
+
                         //----------------------------------------------------------
                         // poll out first job to be executed
                         Job first_job = AllJobs.poll();
@@ -144,7 +124,7 @@ public class OS_scheduling_new {
                         CurrentTime = first_job.getJobArrvTime();
                         // allocate memory& devices to the job
                         // available memory = system main memory - first job requested memory
-                        AvailMemo -= first_job.getJobDevice();
+                        AvailMemo -= first_job.getJobMemS();
                         // available devices = system serial devices - first job requested devices
                         AvailDevs -= first_job.getJobDevice();
                         // set quantum = first job burst time
@@ -155,7 +135,7 @@ public class OS_scheduling_new {
                         ExcJob.setJobST(CurrentTime);
                         // set the executing job finish time
                         ExcJob.setJobFT(TQuantum + CurrentTime);
-                        SR_AR_update();
+                       
                         //----------------------------------------------------------
                         // send the rest of jobs to cpu
                         while (TotalJobs != CompletedQ.size()) {
@@ -176,7 +156,7 @@ public class OS_scheduling_new {
                             CurrentTime = Math.min(e, i);
                             //------------------------------------------------------
                             // the system works acccording to i and e values
-                            // System.out.println(exe_job + "i=" + i + "e=" + e);
+                          
                             if (i < e) {
                                 externalEvent();
                             } else if (i > e) {
@@ -184,13 +164,15 @@ public class OS_scheduling_new {
                             } else {
                                 // if i == e
                                 // perform internal events before external events
+                                
                                 internalEvent();
                                 externalEvent();
                             }
                         } // end of while loop
                         //----------------------------------------------------------
                         // print system final state& reset variables
-                        if (time == 999999 && CompletedQ.size() == TotalJobs) {
+                        if (Dtime == 999999 && CompletedQ.size() == TotalJobs) {
+                            //StartSystem();
                             finalDisplay();
                             CompletedQ.clear();
                             HoldQ1.clear();
@@ -201,7 +183,7 @@ public class OS_scheduling_new {
                             CurrentTime = 0;
                             TQuantum = 0;
                             TotalJobs = 0;
-                            time = 0;
+                            Dtime = 0;
                             SR = 0;
                             AR = 0;
                         }
@@ -214,234 +196,55 @@ public class OS_scheduling_new {
 
     }//end of main
 
-    public static void readFile() throws Exception {
-        String inputLn;
-        String[] command;
-        Job job;
-
-        while (input.hasNextLine()) {
-            // read line by line from the input file
-            inputLn = input.nextLine().replaceAll("[a-zA-Z]=", "");
-            System.out.println("input line: " + inputLn);
-            // separate the info in an array
-            command = inputLn.split(" ");
-
-            //print the command for trace
-            for (int i = 0; i < command.length; i++) {
-                System.out.print("attribute:  " + command[i] + " ");
-                System.out.println("");
-            }
-            //------------------------------------------------------------------
-            // read system configuration   C 0 M=120 S=0
-
-            if (command[0].equalsIgnoreCase("C")) {
-                SystemStartTime = Integer.parseInt(command[1]);
-                //  System.out.println(command[1]);
-                CurrentTime = SystemStartTime;
-                TotalMemo = Integer.parseInt(command[2]);
-                AvailMemo = TotalMemo;
-                //   System.out.println(command[2]);
-                TotalDevs = Integer.parseInt(command[3]);
-                //  System.out.println(command[3]);
-                AvailDevs = TotalDevs;
-//--------------------------------------------------------------
-                // read "A" jobs
-            } else if (command[0].equalsIgnoreCase("A")) {
-                int ArrvTime = Integer.parseInt(command[1]);
-                int JobID = Integer.parseInt(command[2]);
-                int JobMemS = Integer.parseInt(command[3]);
-                int JobDevice = Integer.parseInt(command[4]);
-                int JobBT = Integer.parseInt(command[5]);
-                int JobPriority = Integer.parseInt(command[6]);
-                // create process for all valid jobs (If there is enough total memory or devices )then add them to all_jobs queue
-                if (JobMemS <= TotalMemo && JobDevice <= TotalDevs) {
-                    // create new job object 
-                    job = new Job(ArrvTime, JobID, JobMemS, JobDevice, JobBT, JobPriority);
-                    System.out.println("job A : ");
-                    AllJobs.add(job);
-                    TotalJobs++;//to count the number of job entered to the queue
-
-                }
-                ////If there is not enough resources in the system for the job, the job is rejected 
-            } // read "D" job
-            else if (command[0].equalsIgnoreCase("D")) {
-                System.out.println("D job ");
-                int time = Integer.parseInt(command[1]);
-                if (time != Infinity) {
-                    AllJobs.add(new Job(time));
-                } else {//Dtime == Infinity
-                    Dtime = time;
-                    StartSystem();
-                    if (Dtime == Infinity && CompletedQ.size() == TotalJobs) {
-                        finalDisplay();
-                        //  clear system configs
-                        CompletedQ.clear();
-
-                        HoldQ1.clear();
-                        HoldQ2.clear();
-                        AllJobs.clear();
-                        ExcJob = null;
-                        SystemStartTime = 0;
-                        CurrentTime = 0;
-                        TQuantum = 0;
-                        TotalJobs = 0;
-                        Dtime = 0;
-                        SR = 0;
-                        AR = 0;
-                    }
-
-                }
-
-            }
-
-        }// end of while(input.hasNextLine())
-
-    }
-
-    public static void StartSystem() throws Exception {
-
-        if (!AllJobs.isEmpty()) {
-            Job firstJob = AllJobs.poll();
-            // set system time = first job arraival time
-            CurrentTime = firstJob.getJobArrvTime();
-            // allocate memory& devices to the job
-            // available memory = system main memory - first job requested memory
-            AvailMemo = TotalMemo - firstJob.getJobMemS();
-            // available devices = system serial devices - first job requested devices
-            AvailDevs = TotalDevs - firstJob.getJobDevice();
-            // set quantum = first job burst time
-            TQuantum = firstJob.getJobBT();
-            // Assing the first job to execute
-            ExcJob = firstJob;
-
-            //   set the job start time of execution
-            firstJob.setJobST(CurrentTime);
-            // set the executing job finish time
-            firstJob.setJobFT(TQuantum + CurrentTime);
-        }
-
-        //       
-        //   get I,E and compare >internal vs external 
-        while (CompletedQ.size() != TotalJobs) {// infinte loop in i,e
-            if (AllJobs.isEmpty()) {
-                i = Infinity;
-            } else {
-                i = AllJobs.peek().getJobArrvTime();
-            }
-            //print i for tracing 
-            //  System.out.println("i = " + i);
-
-            if (ExcJob == null) {
-                e = Infinity;
-            } else {
-                e = ExcJob.getJobFT();
-            }
-            //print e for tracing 
-            //System.out.println("e = " + e);
-
-            //The "inner loop" of your program should calculate the time of the next event,
-            //set the current time as the min(i,e)??
-            CurrentTime = Math.min(e, i);
-
-            if (i < e) {
-                //invoke external 
-                externalEvent();
-            } else if (i > e) {
-                //invoke internal 
-                internalEvent();
-            } else {//i=e
-                //do internal then external
-                internalEvent();
-                externalEvent();
-            }
-
-        }//end of  while (CompletedQ.size() != TotalJobs)
-
-    }
-
     public static void externalEvent() throws Exception {//100% jumana, task 0
+      
         // If job ID != 0 so it is A job.    
         if (!AllJobs.isEmpty()) {
             Job J = AllJobs.poll();
             // in case of "D" job
             if (J.getJobID() == 0) {
                 displayEvent(J.getJobArrvTime());
-                //task 0??
-            } else if (HoldQ1.isEmpty()) {//its an A job
-                AvgBT = J.getJobBT();
-                HoldQ1.add(J);
-
-                SR_AR_update();
-                AvailMemo -= J.getJobMemS();
-                AvailDevs -= J.getJobDevice();
-                //TQuantum = DynamicTQuantum();
-                AvgBT = ComputeAvgBT();
-
-            } else if (J.getJobMemS() <= AvailMemo && J.getJobDevice() <= AvailDevs) {// If there is enough main memory and devices for the job
-                AvgBT = ComputeAvgBT();
-                //invoke task 0
-                //  Task0();
-                if (J.getJobBT() < AvgBT) {
-                    HoldQ1.add(J);
+               
+            } else {  // in case of "A" job
+                // if there were available main memory and devices 
+                // the job is sent to hold queue 1 (ready queue)
+                if (J.getJobMemS() <= AvailMemo && J.getJobDevice() <= AvailDevs) {
                     AvailMemo -= J.getJobMemS();
-                    AvailDevs -= J.getJobDevice();
-                    SR_AR_update();
-                    //TQuantum = DynamicTQuantum();
-                    AvgBT = ComputeAvgBT();
+                    AvailDevs -=  J.getJobDevice();
+                    // If the hold queue 1 is empty then The AR = the first job burst time
+                    if (HoldQ1.isEmpty()) {
+                        HoldQ1.add(J);
+                        AvgBT = J.getJobBT();
+                        AR = J.getJobBT();
+                        // if the hold queue 1 is not empty then we calculate the AR and compare the job with the AR to put the job either in  hold queue1 or hold queue2
+                    } else {
+                        ComputeAvgBT();
+                        if (J.getJobBT() > AvgBT) {
+                            HoldQ2.add(J);
+                            J.setEnterQ2time(CurrentTime);
+//                           
+
+                        } else {
+                            HoldQ1.add(J);
+                            ComputeAvgBT();
+                            SR_AR_update();
+                          
+                        }
+                    }
                 } else {
-                    HoldQ2.add(J);
-                    J.setEnterQ2time(CurrentTime);
+                    // if there were not available main memory and devices
+                    // the job is sent to hold queue 3 (waiting queue)
+           
+                    HoldQ3.add(J);
                 }
-
-            } else {
-                HoldQ3.add(AllJobs.poll());
             }
         }
-    }
-
-    public static void Task0() {//remove it
-//BTi is the process burst time
-//AvgBT is the average burst time of all processes in Hold Queue 1
-//X and Y represent available Memory and Devices, respectively.
-        System.out.println("    task 0 broooo ");
-        Job J = AllJobs.poll();
-
-        if (HoldQ1.isEmpty()) {
-            AvgBT = J.getJobBT();
-            HoldQ1.add(J);
-
-            SR_AR_update();
-            AvailMemo -= J.getJobMemS();
-            AvailDevs -= J.getJobDevice();
-            TQuantum = DynamicTQuantum();
-        } else {
-            AvgBT = ComputeAvgBT();
-
-            if (J.getJobBT() > AvgBT) {//put the process in Hold Queue 2
-                HoldQ2.add(J);
-                J.setEnterQ2time(CurrentTime);
-
-//                AvailMemo -= J.getJobMemS();
-//                AvailDevs -= J.getJobDevice();
-            } else { //BTi < = AvgBTput .put the process in Hold Queue 1
-
-                HoldQ1.add(J);
-
-                AvailMemo -= J.getJobMemS();
-                AvailDevs -= J.getJobDevice();
-                SR_AR_update();
-                TQuantum = DynamicTQuantum();
-
-            }
-        }
-
     }
 
     public static void internalEvent() {
-        // work on CPU
-        // calcualte the remaining burst time after execution
-        ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum); //NULL POINTER
-        // if job burst time is done
+      
+        ExcJob.setRemBT(ExcJob.getRemBT() - TQuantum);
+
         if (ExcJob.getRemBT() <= 0) {
             // job is terminated
 
@@ -450,16 +253,18 @@ public class OS_scheduling_new {
             // next job is sent to CPU
             if (!HoldQ1.isEmpty()) {//this part is correct 100%
                 ExcJob = HoldQ1.poll();
-                // update SR& AR
-                SR_AR_update();
+
                 // set quantum time
-                TQuantum = DynamicTQuantum();
+                TQuantum =DynamicTQuantum();
                 // set the job start time of execution
                 ExcJob.setJobST(CurrentTime);
                 // set the executing job finish time
                 int finish = Math.min(ExcJob.getRemBT(), TQuantum);
                 ExcJob.setJobFT(CurrentTime + finish);
-                AvgBT = ComputeAvgBT();
+            
+                // update SR& AR
+                SR_AR_update();
+
             }
         } else {
             // if the job is not finished, it is sent to hold queue 1 (ready queue)
@@ -470,20 +275,18 @@ public class OS_scheduling_new {
 
     public static void Jobterminate() {
 
-        if (ExcJob != null) {
-            AvailMemo += ExcJob.getJobMemS();
-            AvailDevs += ExcJob.getJobDevice();
-            // add the finished job to complete queue 
-            CompletedQ.add(ExcJob);
-            // no jobs in CPU
-            ExcJob = null;
-
-            // move processes from HQ2 to HQ1 and From HQ3 to HQ1 OR HQ2 if possible
-            // task 1
-            Task1();//correct
-            //invoke DP task 2
-            HoldQ2_DP();//correct
-        }
+        AvailMemo += ExcJob.getJobMemS();
+        AvailDevs += ExcJob.getJobDevice();
+        // add the finished job to complete queue 
+        CompletedQ.add(ExcJob);
+        // no jobs in CPU
+        ExcJob = null;
+        // move processes from HQ2 to HQ1 and From HQ3 to HQ1 OR HQ2 if possible
+        // task 1
+        Task1();//correct
+        //invoke DP task 2
+        HoldQ2_DP();//correct
+       
 
     }
 
@@ -492,19 +295,20 @@ public class OS_scheduling_new {
         if (HoldQ1.isEmpty()) {
             AR = 0;
         } else {
-            SR = 0;
-            for (Job j : HoldQ1) {
-                SR += (j.getJobWeight() * j.getRemBT());
+            Job job = HoldQ1.peek();
+            for (int k = 0; k < HoldQ1.size() && job != null; k++) {
+                SR += (job.getJobWeight() * job.getRemBT());
+                job = job.getNext();
             }
 
-            AR = (int) (SR / HoldQ1.size());
+            AR = SR / HoldQ1.size();
 
         }
 
     }
 
     public static int DynamicTQuantum() {
-        return Math.min(AR, ExcJob.getRemBT());
+        return Math.min(ExcJob.getRemBT(),AR );
     }
 
     public static void DRR() {//95% correctooo
@@ -532,7 +336,7 @@ public class OS_scheduling_new {
             // update SR& AR
             SR_AR_update();
             //update quantum time
-            TQuantum = Math.min(job.getJobBT(), AR);
+            TQuantum =DynamicTQuantum();
             // send next job to CPU
             ExcJob = job;
 
@@ -542,58 +346,70 @@ public class OS_scheduling_new {
             int finish = Math.min(ExcJob.getRemBT(), TQuantum);
             ExcJob.setJobFT(CurrentTime + finish);
             SR_AR_update();
-            AvgBT = ComputeAvgBT();
+            ComputeAvgBT();
 
         }
 
     }
 
-    public static double ComputeAvgBT() {//%100
-        double AvgBT = 0;
-        double sumBT = 0;
+    public static void ComputeAvgBT() {//%100
+        if (!HoldQ1.isEmpty()) {
+            int sumBT = 0;
 
-        //Compute AvgBT in Q1
-        for (Job job : HoldQ1) {
-            sumBT += job.getJobBT();
+            //Compute AvgBT in Q1
+            for (Job job : HoldQ1) {
+                sumBT += job.getJobBT();
+            }
+            AvgBT = sumBT / HoldQ1.size();
         }
-        return AvgBT = sumBT / (double) HoldQ1.size();
+
+
     }
 
     public static void Task1() {//moveJobFromQueue3 95% jumana
         // Task 1
         // AvgBT = ComputeAvgBT();
-        //  for (int i = 0; i < HoldQ3.size(); i++) {//can be for each loop
+     
         if (!HoldQ3.isEmpty()) {
 
-            Object[] queue3 = HoldQ3.toArray();
-            for (int i = 0; i < queue3.length; i++) {
-                Job job = (Job) queue3[i];
-                if (AvailMemo >= job.getJobMemS()
-                        && AvailDevs >= job.getJobMemS()) {
-                    AvgBT = ComputeAvgBT();
-                   
-                    if (job.getJobBT() <= AvgBT) {
-                        HoldQ3.remove(job);
-                        HoldQ1.add(job);
-                        SR_AR_update();
+            for (int i = 0; i < HoldQ3.size(); i++) {
+                Job job = HoldQ3.peek();
+                if (AvailMemo >= job.getJobMemS() && AvailDevs >= job.getJobDevice()) {
 
-                        AvgBT = ComputeAvgBT();
-                        AvailMemo -= job.getJobMemS();
-                        AvailDevs -= job.getJobDevice();
+                    ComputeAvgBT();
+                    if (HoldQ1.isEmpty()) {
+                        AvgBT = job.getJobBT();
+                    }
+
+                    if ((job).getJobBT() > AvgBT) {
+                        HoldQ2.add((job));
+                        HoldQ3.remove((job));
+                        //updating only happens when changes are happening to queue 1
+                        AvailMemo -= (job).getJobMemS();
+                        AvailDevs -= (job).getJobDevice();
 
                     } else {
-                        HoldQ2.add(job);
-                        HoldQ3.remove(job);
-                        job.setEnterQ2time(CurrentTime);
+                        HoldQ1.add((job));
+                        HoldQ3.remove((job));
+                        AvailMemo -= (job).getJobMemS();
+                        AvailDevs -= (job).getJobDevice();
+                        ComputeAvgBT();
+                        SR_AR_update();
+
                     }
+
                 }
             }
+
+
         }
-            
+
     }
 
     public static void HoldQ2_DP() {//Task2 done 100%
-
+        if (HoldQ2.isEmpty()) {
+            return;
+        }
         // Task 2
         if (!HoldQ2.isEmpty()) {
             calculate_dynamic_priority();//correct 100%
@@ -602,18 +418,12 @@ public class OS_scheduling_new {
             SortHoldQ2();//correcttto
 
             Job job = HoldQ2.peek();
-            System.out.println("currentTime: " + CurrentTime + "jobID: " + job.getJobID() + "DynamicPriority: " + job.getDynamicPriority());
 
             //try to move job to Q1
-            if (job.getJobMemS() <= AvailMemo && job.getJobDevice() <= AvailDevs) {
-                AvailMemo -= job.getJobMemS();
-                AvailDevs -= job.getJobDevice();
-
-                // The Job at the head is put in the Ready Queue.Q1
-                HoldQ1.add(HoldQ2.poll()); /// no need to use remove since poll removes 
-                SR_AR_update();
-
-            }
+            // The Job at the head is put in the Ready Queue.Q1
+            HoldQ1.add(HoldQ2.poll()); /// no need to use remove since poll removes 
+            ComputeAvgBT();
+            SR_AR_update();
 
         }
 
@@ -624,15 +434,21 @@ public class OS_scheduling_new {
         double totalWait = 0;
         double dynamic_priority = 0.0;
         // Compute wait time for all Jobs in holdQ2
-        for (Job J : HoldQ2) {
+
+        Job J = HoldQ2.peek();
+        for (int j = 0; j < HoldQ2.size() && J != null; j++) {
+
             J.setWaitT(CurrentTime - J.getJobArrvTime());
             totalWait += J.getWaitT();
+            J = J.getNext();
+
         }
 
         double avgWait = totalWait / HoldQ2.size();
 
+        J = HoldQ2.peek();
         // Set the dynamic priority for all processes.
-        for (Job J : HoldQ2) {
+        for (int j = 0; j < HoldQ2.size() && J != null; j++) {
 
             // if the job doesnt have a previous DP
             if (J.getDynamicPriority() == -1) {
@@ -645,6 +461,8 @@ public class OS_scheduling_new {
                     J.setDynamicPriority(dynamic_priority);
                 }
             }
+
+            J = J.getNext();
         }
     }
 
@@ -683,7 +501,7 @@ public class OS_scheduling_new {
         System.out.println("\n  Completed jobs: \n  ----------------");
         System.out.println("  Job ID   Arrival Time    Finish Time  Turnaround Time \n"
                 + "  =================================================================");
-        //    Collections.sort(CompletedQ, new sortbyID());
+        Collections.sort(CompletedQ, new sortbyID());
         for (Job J : CompletedQ) {
             J.setJobTAT(J.getJobFT() - J.getJobArrvTime());
             System.out.printf("    %-10d %-12d %-15d %-15d %n", J.getJobID(), J.getJobArrvTime(), J.getJobFT(), J.getJobTAT());
@@ -731,7 +549,7 @@ public class OS_scheduling_new {
         System.out.println("  Job ID   Arrival Time    Finish Time  Turnaround Time ");
         System.out.println("  =================================================================");
         double system_turnaround_time = 0;
-        //  Collections.sort(CompletedQ, new sortbyID());
+        Collections.sort(CompletedQ, new sortbyID());
 
         for (Job J : CompletedQ) {
             J.setJobTAT(J.getJobFT() - J.getJobArrvTime());
@@ -740,18 +558,17 @@ public class OS_scheduling_new {
         }
         double avg_turnaround_time = system_turnaround_time / CompletedQ.size();
         System.out.printf("\n\n  Avrage System Turnaround Time =  %.3f", avg_turnaround_time);
-        System.out.println("\n\n*********************************************************************\n");
+        System.out.println("\n\n*************************\n");
 
     }
     //---------------------------HELPING CLASS FOR SORTING--------------------------
 
-    class sortbyID implements Comparator<Job> {
+    static class sortbyID implements Comparator<Job> {
 
         // Used for sorting jobs in ascending order
         @Override
         public int compare(Job a, Job b) {
             return (int) (a.getJobID() - b.getJobID());
         }
-
     }
 }
