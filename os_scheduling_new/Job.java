@@ -1,8 +1,22 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+CPCS361 ,section:IAR
+project: Smart process scheduling 
+Group 3
+members:
+Shater Mohammed Al-shubbak, Reem Abdulrahman Alghamdi, Raneem Hameed Alguraygri, Noha Abbas sukkar
+Date: 12/12/2021
+
+compiler:
+ JDK 8.1, internal API of javac
+
+hardware configuration:
+ processor: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz   2.30 GHz
+ RAM: 16.0 GB 
+ system type: 64-bit operating system, x64-based processor
+
+operating system:
+ Windows 10
+*/
 package os_scheduling_new;
 public class Job {
 
